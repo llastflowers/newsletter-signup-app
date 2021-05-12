@@ -19,6 +19,13 @@ Resources:
                 type: aws_proxy
                 uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getForm.Arn}/invocations
               responses: {}
+          /submit:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${handleSubmit.Arn}/invocations
+              responses: {}
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
   getForm:
@@ -43,6 +50,46 @@ Resources:
             Path: /newsletter-form
             Method: GET
             RestApiId: !Ref Api
+  handleSubmit:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-handleSubmit
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: handleSubmit
+      CodeUri: src/Function
+      Handler: index.handler
+      Runtime: nodejs14.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SignUps
+      Events:
+        ApiPOSTsubmit:
+          Type: Api
+          Properties:
+            Path: /submit
+            Method: POST
+            RestApiId: !Ref Api
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref SignUps
+          TABLE_ARN: !GetAtt SignUps.Arn
+  SignUps:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
 Parameters:
   StackTagName:
     Type: String
