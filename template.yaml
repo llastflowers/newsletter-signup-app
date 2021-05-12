@@ -1,12 +1,74 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Resources:
-  Api:
+  getForm:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-getForm
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: getForm
+      CodeUri: src/getForm
+      Handler: index.handler
+      Runtime: nodejs14.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+      Events:
+        formApiGETnewsletterform:
+          Type: Api
+          Properties:
+            Path: /newsletter-form
+            Method: GET
+            RestApiId: !Ref formApi
+  handleSubmit:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-handleSubmit
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: handleSubmit
+      CodeUri: src/Function
+      Handler: index.handler
+      Runtime: nodejs14.x
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SignUps
+      Events:
+        formApiPOSTsubmit:
+          Type: Api
+          Properties:
+            Path: /submit
+            Method: POST
+            RestApiId: !Ref formApi
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref SignUps
+          TABLE_ARN: !GetAtt SignUps.Arn
+  SignUps:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  formApi:
     Type: AWS::Serverless::Api
     Properties:
       Name: !Sub
         - ${ResourceName} From Stack ${StackTagName} Environment ${EnvironmentTagName}
-        - ResourceName: Api
+        - ResourceName: formApi
       StageName: !Ref EnvironmentAPIGatewayStageName
       DefinitionBody:
         swagger: '2.0'
@@ -28,68 +90,6 @@ Resources:
               responses: {}
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
-  getForm:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub ${AWS::StackName}-getForm
-      Description: !Sub
-        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
-        - ResourceName: getForm
-      CodeUri: src/getForm
-      Handler: index.handler
-      Runtime: nodejs14.x
-      MemorySize: 3008
-      Timeout: 30
-      Tracing: Active
-      Policies:
-        - AWSXrayWriteOnlyAccess
-      Events:
-        ApiGETnewsletterform:
-          Type: Api
-          Properties:
-            Path: /newsletter-form
-            Method: GET
-            RestApiId: !Ref Api
-  handleSubmit:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub ${AWS::StackName}-handleSubmit
-      Description: !Sub
-        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
-        - ResourceName: handleSubmit
-      CodeUri: src/Function
-      Handler: index.handler
-      Runtime: nodejs14.x
-      MemorySize: 3008
-      Timeout: 30
-      Tracing: Active
-      Policies:
-        - AWSXrayWriteOnlyAccess
-        - DynamoDBCrudPolicy:
-            TableName: !Ref SignUps
-      Events:
-        ApiPOSTsubmit:
-          Type: Api
-          Properties:
-            Path: /submit
-            Method: POST
-            RestApiId: !Ref Api
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref SignUps
-          TABLE_ARN: !GetAtt SignUps.Arn
-  SignUps:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-        - AttributeName: email
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: email
-          KeyType: HASH
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
 Parameters:
   StackTagName:
     Type: String
