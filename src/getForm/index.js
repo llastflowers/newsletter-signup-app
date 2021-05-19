@@ -7,6 +7,8 @@ const formHTML = `<!DOCTYPE html>
   <body>
     <h1>Subscribe to our newsletter</h1>
     <form action="submit" method="post">
+        <button>Yay!</button>
+        <button>Boo!</button>
         <label>Email
             <input name="email" type="text">
         </label>
